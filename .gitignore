@@ -1,0 +1,6 @@
+*.tar
+.vscode
+*__pycache__
+*.ipynb*
+*.zip
+/dataset
