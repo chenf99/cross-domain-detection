@@ -8,7 +8,7 @@ from datasets import PascalVOCDataset
 from utils import label_map, AverageMeter, save_checkpoint, clip_gradient
 
 
-def train(train_loader, model, criterion, optimizer, epoch):
+def train(train_loader, model, criterion, optimizer, epoch, device):
     """
     One epoch's training.
     :param train_loader: DataLoader for training data
@@ -38,7 +38,7 @@ def train(train_loader, model, criterion, optimizer, epoch):
         predicted_locs, predicted_scores = model(images)  # (N, 8732, 4), (N, 8732, n_classes)
 
         # Loss
-        loss = criterion(predicted_locs, predicted_scores, boxes, labels)  # scalar
+        loss = criterion(predicted_locs, predicted_scores, boxes, labels, device)  # scalar
 
         # Backward prop.
         optimizer.zero_grad()
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     # Model parameters
     # Not too many here since the SSD300 has a very specific structure
     n_classes = len(label_map)  # number of different types of objects
-    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
     # Learning parameters
     iterations = 10000  # number of iterations to train
@@ -153,7 +153,8 @@ if __name__ == '__main__':
               model=model,
               criterion=criterion,
               optimizer=optimizer,
-              epoch=epoch)
+              epoch=epoch,
+              device=device)
 
         # Save checkpoint
         save_checkpoint(epoch, model, optimizer, args.result)

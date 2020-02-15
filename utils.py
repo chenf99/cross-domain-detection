@@ -5,8 +5,6 @@ import random
 import xml.etree.ElementTree as ET
 import torchvision.transforms.functional as FT
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 # Label map
 voc_labels = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
               'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
@@ -143,7 +141,7 @@ def decimate(tensor, m):
     return tensor
 
 
-def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties):
+def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties, device):
     """
     Calculate the Mean Average Precision (mAP) of detected objects.
 

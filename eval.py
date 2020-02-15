@@ -4,9 +4,11 @@ import argparse
 from utils import calculate_mAP
 from datasets import PascalVOCDataset
 from pprint import PrettyPrinter
+from model import SSD300
+from utils import label_map
 
 
-def evaluate(test_loader, model, pp):
+def evaluate(test_loader, model, pp, device):
     """
     Evaluate.
 
@@ -36,7 +38,7 @@ def evaluate(test_loader, model, pp):
             # Detect objects in SSD output
             det_boxes_batch, det_labels_batch, det_scores_batch = model.detect_objects(predicted_locs, predicted_scores,
                                                                                        min_score=0.01, max_overlap=0.45,
-                                                                                       top_k=200)
+                                                                                       top_k=200, device=device)
             # Evaluation MUST be at min_score=0.01, max_overlap=0.45, top_k=200 for fair comparision with the paper's results and other repos
 
             # Store this batch's results for mAP calculation
@@ -52,7 +54,7 @@ def evaluate(test_loader, model, pp):
             true_difficulties.extend(difficulties)
 
         # Calculate mAP
-        APs, mAP = calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties)
+        APs, mAP = calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties, device)
 
     # Print AP for each class
     pp.pprint(APs)
@@ -65,6 +67,7 @@ if __name__ == '__main__':
     parser.add_argument('--data_folder', required=True)
     parser.add_argument('--checkpoint', help='path of the pretrained model', required=True)
     parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--gpu', type=int, default=0)
     args = parser.parse_args()
 
     # Good formatting when printing the APs for each class and mAP
@@ -73,16 +76,21 @@ if __name__ == '__main__':
     # Parameters
     keep_difficult = True  # difficult ground truth objects must always be considered in mAP calculation, because these objects DO exist!
     workers = 4
-    device = torch.device("cuda:6" if torch.cuda.is_available() else "cpu")
+    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
 
     # Load model checkpoint that is to be evaluated
-    checkpoint = torch.load(args.checkpoint)
-    model = checkpoint['model']
-    for m in model.modules():
-        if 'Conv' in str(type(m)):
-            setattr(m, 'padding_mode', 'zeros')
-    model = model.to(device)
+    if args.checkpoint == 'pretrained_ssd300.pth.tar':
+        checkpoint = torch.load(args.checkpoint)
+        model = checkpoint['model']
+        for m in model.modules():
+            if 'Conv' in str(type(m)):
+                setattr(m, 'padding_mode', 'zeros')
+    else:
+        checkpoint = torch.load(args.checkpoint)
+        model = SSD300(n_classes=len(label_map))
+        model.load_state_dict(checkpoint['model'])
 
+    model = model.to(device)
     # Switch to eval mode
     model.eval()
 
@@ -93,4 +101,4 @@ if __name__ == '__main__':
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                               collate_fn=test_dataset.collate_fn, num_workers=workers, pin_memory=True)
 
-    evaluate(test_loader, model, pp)
+    evaluate(test_loader, model, pp, device)

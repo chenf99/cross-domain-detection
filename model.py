@@ -7,8 +7,6 @@ from math import sqrt
 # from itertools import product as product
 import torchvision
 
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-
 
 class VGGBase(nn.Module):
     """
@@ -420,12 +418,12 @@ class SSD300(nn.Module):
                                 additional_scale = 1.
                             prior_boxes.append([cx, cy, additional_scale, additional_scale])
 
-        prior_boxes = torch.FloatTensor(prior_boxes).to(device)  # (8732, 4)
+        prior_boxes = torch.FloatTensor(prior_boxes)  # (8732, 4)
         prior_boxes.clamp_(0, 1)  # (8732, 4)
 
         return prior_boxes
 
-    def detect_objects(self, predicted_locs, predicted_scores, min_score, max_overlap, top_k):
+    def detect_objects(self, predicted_locs, predicted_scores, min_score, max_overlap, top_k, device):
         """
         Decipher the 8732 locations and class scores (output of ths SSD300) to detect objects.
 
@@ -551,7 +549,7 @@ class MultiBoxLoss(nn.Module):
         self.smooth_l1 = nn.L1Loss()
         self.cross_entropy = nn.CrossEntropyLoss(reduce=False)
 
-    def forward(self, predicted_locs, predicted_scores, boxes, labels):
+    def forward(self, predicted_locs, predicted_scores, boxes, labels, device):
         """
         Forward propagation.
 
