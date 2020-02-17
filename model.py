@@ -325,7 +325,7 @@ class SSD300(nn.Module):
     The SSD300 network - encapsulates the base VGG network, auxiliary, and prediction convolutions.
     """
 
-    def __init__(self, n_classes):
+    def __init__(self, n_classes, device):
         super(SSD300, self).__init__()
 
         self.n_classes = n_classes
@@ -340,7 +340,7 @@ class SSD300(nn.Module):
         nn.init.constant_(self.rescale_factors, 20)
 
         # Prior boxes
-        self.priors_cxcy = self.create_prior_boxes()
+        self.priors_cxcy = self.create_prior_boxes(device)
 
     def forward(self, image):
         """
@@ -368,7 +368,7 @@ class SSD300(nn.Module):
 
         return locs, classes_scores
 
-    def create_prior_boxes(self):
+    def create_prior_boxes(self, device):
         """
         Create the 8732 prior (default) boxes for the SSD300, as defined in the paper.
 
@@ -418,7 +418,7 @@ class SSD300(nn.Module):
                                 additional_scale = 1.
                             prior_boxes.append([cx, cy, additional_scale, additional_scale])
 
-        prior_boxes = torch.FloatTensor(prior_boxes)  # (8732, 4)
+        prior_boxes = torch.FloatTensor(prior_boxes).to(device)  # (8732, 4)
         prior_boxes.clamp_(0, 1)  # (8732, 4)
 
         return prior_boxes

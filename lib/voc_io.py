@@ -144,7 +144,6 @@ class PascalVocReader:
         assert self.filepath.endswith('.xml'), "Unsupport file format"
         parser = etree.XMLParser(encoding='utf-8')
         xmltree = ElementTree.parse(self.filepath, parser=parser).getroot()
-        filename = xmltree.find('filename').text
         try:
             verified = xmltree.attrib['verified']
             if verified == 'yes':

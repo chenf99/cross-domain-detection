@@ -5,7 +5,7 @@ import os
 
 import cv2
 
-from voc_io import PascalVocWriter
+from lib.voc_io import PascalVocWriter
 
 
 class LabelFileError(Exception):

@@ -87,7 +87,7 @@ if __name__ == '__main__':
                 setattr(m, 'padding_mode', 'zeros')
     else:
         checkpoint = torch.load(args.checkpoint)
-        model = SSD300(n_classes=len(label_map))
+        model = SSD300(n_classes=len(label_map), device=device)
         model.load_state_dict(checkpoint['model'])
 
     model = model.to(device)
