@@ -106,17 +106,11 @@ if __name__ == '__main__':
         for m in model.modules():
             if 'Conv' in str(type(m)):
                 setattr(m, 'padding_mode', 'zeros')
-        # optimizer = checkpoint['optimizer']
     else:
         model = SSD300(n_classes=n_classes, device=device)
         if args.checkpoint:
             checkpoint = torch.load(args.checkpoint, map_location=device)
             model.load_state_dict(checkpoint['model'])
-            # optimizer.load_state_dict(checkpoint['optimizer'])
-            # for state in optimizer.state.values():
-            #     for k, v in state.items():
-            #         if torch.is_tensor(v):
-            #             state[k] = v.to(device)
     # Initialize the optimizer, with twice the default learning rate for biases, as in the original Caffe repo
     biases = list()
     not_biases = list()
@@ -137,7 +131,7 @@ if __name__ == '__main__':
     train_dataset = PascalVOCDataset(args.data_folder,
                                      split='train',
                                      keep_difficult=keep_difficult)
-    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False,
+    train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                collate_fn=train_dataset.collate_fn, num_workers=workers,
                                                pin_memory=True)  # note that we're passing the collate function here
 

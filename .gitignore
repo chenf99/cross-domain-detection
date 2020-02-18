@@ -5,4 +5,4 @@
 *.zip
 /dataset
 README.md
-test.py
+test*

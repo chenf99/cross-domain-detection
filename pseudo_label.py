@@ -73,8 +73,6 @@ def main():
             det_boxes_batch, det_labels_batch, det_scores_batch = model.detect_objects(predicted_locs, predicted_scores,
                                                                                        min_score=0.01, max_overlap=0.45,
                                                                                        top_k=200, device=device)
-            labels = [l.to(device) for l in labels]
-
             det_boxes.extend(det_boxes_batch)
             det_labels.extend(det_labels_batch)
             det_scores.extend(det_scores_batch)
@@ -99,8 +97,7 @@ def main():
         name = ids[i]  # img的id
         cnt = 0
 
-        gt_l = set(gt_l)
-        for l_ in set(gt_l):
+        for l_ in gt_l:
             cnt += 1
             class_indices = np.where(pred_l == l_)[0]  # 所有预测label正确的坐标
             if len(class_indices) == 0:
@@ -118,7 +115,9 @@ def main():
             proper_dets[labels[l_]].append(pred_b[ind])
 
             # 删除这个预测
-            pass
+            pred_b = np.concatenate((pred_b[:ind], pred_b[ind + 1:]), 0)
+            pred_l = np.concatenate((pred_l[:ind], pred_l[ind + 1:]), 0)
+            pred_s = np.concatenate((pred_s[:ind], pred_s[ind + 1:]), 0)
             
         if cnt == 0:
             continue  # 没有ground turth label,直接跳过写入Annotation步骤
