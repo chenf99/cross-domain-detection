@@ -8,6 +8,7 @@ import torchvision.transforms.functional as FT
 # Label map
 voc_labels = ('aeroplane', 'bicycle', 'bird', 'boat', 'bottle', 'bus', 'car', 'cat', 'chair', 'cow', 'diningtable',
               'dog', 'horse', 'motorbike', 'person', 'pottedplant', 'sheep', 'sofa', 'train', 'tvmonitor')
+bam_labels = ('bicycle', 'bird', 'car', 'cat', 'dog', 'person')
 label_map = {k: v + 1 for v, k in enumerate(voc_labels)}
 label_map['background'] = 0
 rev_label_map = {v: k for k, v in label_map.items()}  # Inverse mapping
@@ -267,10 +268,10 @@ def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, tr
         average_precisions[c - 1] = precisions.mean()  # c is in [1, n_classes - 1]
 
     # Calculate Mean Average Precision (mAP)
-    mean_average_precision = average_precisions.mean().item()
+    mean_average_precision = average_precisions[average_precisions != 0].mean().item()
 
     # Keep class-wise average precisions in a dictionary
-    average_precisions = {rev_label_map[c + 1]: v for c, v in enumerate(average_precisions.tolist())}
+    average_precisions = {rev_label_map[c + 1]: v for c, v in enumerate(average_precisions.tolist()) if v > 0}
 
     return average_precisions, mean_average_precision
 

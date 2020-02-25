@@ -4,13 +4,14 @@ import os
 import torch
 import torch.backends.cudnn as cudnn
 import json
-import cv2
 
 from collections import defaultdict
 from lib.label_file import LabelFile
-from utils import voc_labels, label_map
+from utils import voc_labels, label_map, bam_labels
 from model import SSD300
 from datasets import PascalVOCDataset
+from PIL import Image
+from tqdm import tqdm
 
 
 def path_to_id(img):
@@ -29,6 +30,7 @@ def main():
     parser.add_argument('--checkpoint', help='path of the pretrained model', required=True)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--batch_size', type=int, default=32)
+    parser.add_argument('--data_type', choices=('clipart, bam'), required=True)
     args = parser.parse_args()
 
     n_classes = len(label_map)  # number of different types of objects
@@ -64,7 +66,7 @@ def main():
 
     # only use labels of ground truth, not boxes
     with torch.no_grad():
-        for _, (images, boxes, labels, difficulties) in enumerate(dataloader):
+        for images, boxes, labels, difficulties in tqdm(dataloader, desc='pseudo labeling'):
             images = images.to(device)  # (N, 3, 300, 300)
 
             # Forward prop.
@@ -97,6 +99,7 @@ def main():
         name = ids[i]  # img的id
         cnt = 0
 
+        gt_l = set(gt_l)
         for l_ in gt_l:
             cnt += 1
             class_indices = np.where(pred_l == l_)[0]  # 所有预测label正确的坐标
@@ -107,17 +110,16 @@ def main():
             assert (l_ == pred_l[ind])
             # Transform to original image dimensions
             img_path = os.path.join(args.root, 'JPEGImages', name + '.jpg')
-            img = cv2.imread(img_path, cv2.IMREAD_COLOR)
-            width, height = img.shape[0], img.shape[1]
-            original_dims = np.array([width, height, width, height])
+            img = Image.open(img_path, mode='r')
+            original_dims = np.array([img.width, img.height, img.width, img.height])
             pred_b[ind] = pred_b[ind] * original_dims
             # 这个label预测正确的bbox+1
             proper_dets[labels[l_]].append(pred_b[ind])
 
             # 删除这个预测
-            pred_b = np.concatenate((pred_b[:ind], pred_b[ind + 1:]), 0)
-            pred_l = np.concatenate((pred_l[:ind], pred_l[ind + 1:]), 0)
-            pred_s = np.concatenate((pred_s[:ind], pred_s[ind + 1:]), 0)
+            # pred_b = np.concatenate((pred_b[:ind], pred_b[ind + 1:]), 0)
+            # pred_l = np.concatenate((pred_l[:ind], pred_l[ind + 1:]), 0)
+            # pred_s = np.concatenate((pred_s[:ind], pred_s[ind + 1:]), 0)
             
         if cnt == 0:
             continue  # 没有ground turth label,直接跳过写入Annotation步骤
@@ -125,7 +127,8 @@ def main():
         new_ids.append(ids[i] + '\n')
         filename = os.path.join(args.result, 'Annotations', name + '.xml')
         img_path = os.path.join(args.root, 'JPEGImages', name + '.jpg')
-        labeler = LabelFile(filename, img_path, voc_labels)
+        actual_labels = voc_labels if args.data_type == 'clipart' else bam_labels
+        labeler = LabelFile(filename, img_path, actual_labels)
         labeler.savePascalVocFormat(proper_dets)
 
     txt = 'ImageSets/Main/trainval.txt'

@@ -1,11 +1,13 @@
 import torch
 import argparse
+import warnings
 
 from utils import calculate_mAP
 from datasets import PascalVOCDataset
 from pprint import PrettyPrinter
 from model import SSD300
 from utils import label_map
+from tqdm import tqdm
 
 
 def evaluate(test_loader, model, pp, device):
@@ -29,7 +31,7 @@ def evaluate(test_loader, model, pp, device):
 
     with torch.no_grad():
         # Batches
-        for i, (images, boxes, labels, difficulties) in enumerate(test_loader):
+        for i, (images, boxes, labels, difficulties) in enumerate(tqdm(test_loader, desc='evaluating model')):
             images = images.to(device)  # (N, 3, 300, 300)
 
             # Forward prop.
@@ -54,6 +56,7 @@ def evaluate(test_loader, model, pp, device):
             true_difficulties.extend(difficulties)
 
         # Calculate mAP
+        print('calculating mAP...')
         APs, mAP = calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties, device)
 
     # Print AP for each class
@@ -63,6 +66,8 @@ def evaluate(test_loader, model, pp, device):
 
     
 if __name__ == '__main__':
+    warnings.filterwarnings('ignore')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_folder', required=True)
     parser.add_argument('--checkpoint', help='path of the pretrained model', required=True)
@@ -80,13 +85,13 @@ if __name__ == '__main__':
 
     # Load model checkpoint that is to be evaluated
     if args.checkpoint == 'pretrained_ssd300.pth.tar':
-        checkpoint = torch.load(args.checkpoint)
+        checkpoint = torch.load(args.checkpoint, map_location=device)
         model = checkpoint['model']
         for m in model.modules():
             if 'Conv' in str(type(m)):
                 setattr(m, 'padding_mode', 'zeros')
     else:
-        checkpoint = torch.load(args.checkpoint)
+        checkpoint = torch.load(args.checkpoint, map_location=device)
         model = SSD300(n_classes=len(label_map), device=device)
         model.load_state_dict(checkpoint['model'])
 

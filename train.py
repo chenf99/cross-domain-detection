@@ -3,6 +3,7 @@ import argparse
 import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
+import warnings
 from model import SSD300, MultiBoxLoss
 from datasets import PascalVOCDataset
 from utils import label_map, AverageMeter, save_checkpoint, clip_gradient, adjust_learning_rate
@@ -69,6 +70,8 @@ def train(train_loader, model, criterion, optimizer, epoch, device, print_freq):
 
 
 if __name__ == '__main__':
+    warnings.filterwarnings('ignore')
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--data_folder', required=True)
     parser.add_argument('--checkpoint', help='path of the pretrained model')
