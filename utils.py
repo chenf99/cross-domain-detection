@@ -48,25 +48,33 @@ def parse_annotation(annotation_path):
     return {'boxes': boxes, 'labels': labels, 'difficulties': difficulties}
 
 
-# def create_data_lists(voc07_path, voc12_path, output_folder):
-def create_data_lists(voc07_path, output_folder):
+def create_data_lists(voc07_path1, voc07_path2, voc12_path1, voc12_path2, output_folder, type):
     """
     Create lists of images, the bounding boxes and labels of the objects in these images, and save these to file.
 
-    :param voc07_path: path to the 'VOC2007' folder
-    :param voc12_path: path to the 'VOC2012' folder
+    :param voc07_path1: path to the 'VOC2007' folder
+    :param voc12_path1: path to the 'VOC2012' folder
+    :param voc07_path2: path to the 'VOC2007' folder of pascal
+    :param voc12_path2: path to the 'VOC2012' folder of pascal
     :param output_folder: folder where the JSONs must be saved
     """
-    voc07_path = os.path.abspath(voc07_path)
-    # voc12_path = os.path.abspath(voc12_path)
+    voc07_path1 = os.path.abspath(voc07_path1) if voc07_path1 is not None else None
+    voc12_path1 = os.path.abspath(voc12_path1) if voc12_path1 is not None else None
+    voc07_path2 = os.path.abspath(voc07_path2) if voc07_path2 is not None else None
+    voc12_path2 = os.path.abspath(voc12_path2) if voc12_path2 is not None else None
+
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
 
     train_images = list()
     train_objects = list()
     n_objects = 0
 
+    paths = [voc07_path1, voc12_path1, voc07_path2, voc12_path2]
+    paths = [i for i in paths if i is not None]
+
     # Training data
-    # for path in [voc07_path, voc12_path]:
-    for path in [voc07_path]:
+    for path in paths:
         # Find IDs of images in training data
         with open(os.path.join(path, 'ImageSets/Main/trainval.txt')) as f:
             ids = f.read().splitlines()
@@ -93,34 +101,35 @@ def create_data_lists(voc07_path, output_folder):
     print('\nThere are %d training images containing a total of %d objects. Files have been saved to %s.' % (
         len(train_images), n_objects, os.path.abspath(output_folder)))
 
-    # Validation data
-    test_images = list()
-    test_objects = list()
-    n_objects = 0
+    if type == 'ideal':
+        # Validation data
+        test_images = list()
+        test_objects = list()
+        n_objects = 0
 
-    # Find IDs of images in validation data
-    with open(os.path.join(voc07_path, 'ImageSets/Main/test.txt')) as f:
-        ids = f.read().splitlines()
+        # Find IDs of images in validation data
+        with open(os.path.join(voc07_path1, 'ImageSets/Main/test.txt')) as f:
+            ids = f.read().splitlines()
 
-    for id in ids:
-        # Parse annotation's XML file
-        objects = parse_annotation(os.path.join(voc07_path, 'Annotations', id + '.xml'))
-        if len(objects['boxes']) == 0:
-            continue
-        test_objects.append(objects)
-        n_objects += len(objects['boxes'])
-        test_images.append(os.path.join(voc07_path, 'JPEGImages', id + '.jpg'))
+        for id in ids:
+            # Parse annotation's XML file
+            objects = parse_annotation(os.path.join(voc07_path1, 'Annotations', id + '.xml'))
+            if len(objects['boxes']) == 0:
+                continue
+            test_objects.append(objects)
+            n_objects += len(objects['boxes'])
+            test_images.append(os.path.join(voc07_path1, 'JPEGImages', id + '.jpg'))
 
-    assert len(test_objects) == len(test_images)
+        assert len(test_objects) == len(test_images)
 
-    # Save to file
-    with open(os.path.join(output_folder, 'TEST_images.json'), 'w') as j:
-        json.dump(test_images, j)
-    with open(os.path.join(output_folder, 'TEST_objects.json'), 'w') as j:
-        json.dump(test_objects, j)
+        # Save to file
+        with open(os.path.join(output_folder, 'TEST_images.json'), 'w') as j:
+            json.dump(test_images, j)
+        with open(os.path.join(output_folder, 'TEST_objects.json'), 'w') as j:
+            json.dump(test_objects, j)
 
-    print('\nThere are %d validation images containing a total of %d objects. Files have been saved to %s.' % (
-        len(test_images), n_objects, os.path.abspath(output_folder)))
+        print('\nThere are %d validation images containing a total of %d objects. Files have been saved to %s.' % (
+            len(test_images), n_objects, os.path.abspath(output_folder)))
 
 
 def decimate(tensor, m):
@@ -664,16 +673,14 @@ def accuracy(scores, targets, k):
     return correct_total.item() * (100.0 / batch_size)
 
 
-def save_checkpoint(epoch, model, optimizer, filename):
+def save_checkpoint(model, filename):
     """
     Save model checkpoint.
     :param epoch: epoch number
     :param model: model
     :param optimizer: optimizer
     """
-    state = {'epoch': epoch,
-             'model': model.state_dict(),
-             'optimizer': optimizer.state_dict()}
+    state = {'model': model.state_dict()}
     filename += '.pth.tar'
     torch.save(state, filename)
 
