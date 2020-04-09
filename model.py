@@ -644,6 +644,49 @@ class MultiBoxLoss(nn.Module):
         # As in the paper, averaged over positive priors only, although computed over both positive and hard-negative priors
         conf_loss = (conf_loss_hard_neg.sum() + conf_loss_pos.sum()) / n_positives.sum().float()  # (), scalar
 
+        # Focal loss for confidence loss
+        # preds = predicted_scores.view(-1, n_classes)
+        # targets = true_classes.view(-1)
+        # focal_loss = FocalLoss(n_classes)
+        # conf_loss = focal_loss(preds, targets)
+
         # TOTAL LOSS
 
         return conf_loss + self.alpha * loc_loss
+
+
+class FocalLoss(nn.Module):
+    def __init__(self, num_classes, alpha=0.25, gamma=2, size_average=True):
+        """
+        :param alpha:   类别权重.
+        :param gamma:   难易样本调节参数
+        :param num_classes:     类别数量
+        :param size_average:    损失计算方式,默认取均值
+        """
+
+        super(FocalLoss, self).__init__()
+        self.size_average = size_average
+        self.alpha = torch.zeros(num_classes)
+        self.alpha[0] += (1 - alpha)
+        self.alpha[1:] += alpha
+        self.gamma = gamma
+    
+    def forward(self, preds, targets):
+        '''
+        :param preds: (N, C)
+        :param labels: (N)
+        '''
+        preds = preds.view(-1, preds.size(-1))
+        self.alpha = self.alpha.to(preds.device)
+        preds_softmax = F.softmax(preds, dim=1)
+        preds_logsoft = torch.log(preds_softmax)
+        preds_softmax = preds_softmax.gather(1, targets.view(-1, 1))  # 这部分实现nll_loss ( crossempty = log_softmax + nll )
+        preds_logsoft = preds_logsoft.gather(1, targets.view(-1, 1))  # (N, 1)
+        self.alpha = self.alpha.gather(0, targets.view(-1))  # (N)
+        loss = -torch.mul(torch.pow((1 - preds_softmax), self.gamma), preds_logsoft)  # (N, 1)
+        loss = torch.mul(self.alpha, loss.t())
+        if self.size_average:
+            loss = loss.mean()
+        else:
+            loss = loss.sum()
+        return loss

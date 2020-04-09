@@ -681,8 +681,7 @@ def save_checkpoint(model, filename):
     :param optimizer: optimizer
     """
     state = {'model': model.state_dict()}
-    filename += '.pth.tar'
-    torch.save(state, filename)
+    torch.save(state, filename + '.pth.tar')
 
 
 class AverageMeter(object):

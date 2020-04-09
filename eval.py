@@ -1,6 +1,7 @@
 import torch
 import argparse
 import warnings
+import os
 
 from utils import calculate_mAP
 from datasets import PascalVOCDataset
@@ -10,7 +11,7 @@ from utils import label_map
 from tqdm import tqdm
 
 
-def evaluate(test_loader, model, pp, device):
+def evaluate(test_loader, model, device):
     """
     Evaluate.
 
@@ -59,12 +60,9 @@ def evaluate(test_loader, model, pp, device):
         print('calculating mAP...')
         APs, mAP = calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, true_difficulties, device)
 
-    # Print AP for each class
-    pp.pprint(APs)
+    return APs, mAP
 
-    print('\nMean Average Precision (mAP): %.3f' % mAP)
 
-    
 if __name__ == '__main__':
     warnings.filterwarnings('ignore')
 
@@ -81,7 +79,8 @@ if __name__ == '__main__':
     # Parameters
     keep_difficult = True  # difficult ground truth objects must always be considered in mAP calculation, because these objects DO exist!
     workers = 4
-    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)  # 防止预训练模型被加载到gpu0上
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load model checkpoint that is to be evaluated
     if args.checkpoint == 'pretrained_ssd300.pth.tar':
@@ -106,4 +105,8 @@ if __name__ == '__main__':
     test_loader = torch.utils.data.DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False,
                                               collate_fn=test_dataset.collate_fn, num_workers=workers, pin_memory=True)
 
-    evaluate(test_loader, model, pp, device)
+    APs, mAP = evaluate(test_loader, model, device)
+    
+    # Print AP for each class
+    pp.pprint(APs)
+    print('\nMean Average Precision (mAP): %.3f' % mAP)

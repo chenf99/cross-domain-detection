@@ -4,9 +4,11 @@ import torch.backends.cudnn as cudnn
 import torch.optim
 import torch.utils.data
 import warnings
+import os
 from model import SSD300, MultiBoxLoss
 from datasets import PascalVOCDataset
 from utils import label_map, AverageMeter, save_checkpoint, clip_gradient, adjust_learning_rate
+from matplotlib import pyplot as plt
 
 
 def train(train_loader, model, criterion, optimizer, epoch, device, print_freq):
@@ -52,7 +54,6 @@ def train(train_loader, model, criterion, optimizer, epoch, device, print_freq):
         # Update model
         optimizer.step()
 
-        # if not np.isnan(loss.item()):
         losses.update(loss.item(), images.size(0))
         batch_time.update(time.time() - start)
 
@@ -67,6 +68,8 @@ def train(train_loader, model, criterion, optimizer, epoch, device, print_freq):
                                                                   batch_time=batch_time,
                                                                   data_time=data_time, loss=losses))
     del predicted_locs, predicted_scores, images, boxes, labels  # free some memory since their histories may be stored
+    
+    return losses.avg
 
 
 if __name__ == '__main__':
@@ -78,19 +81,23 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size', type=int, default=32)
     parser.add_argument('--gpu', type=int, default=0)
     parser.add_argument('--iteration', type=int, default=10000)
+    parser.add_argument('--lr', type=float, default=1e-5)
     parser.add_argument('--result', required=True)
     args = parser.parse_args()
     # Data parameters
     keep_difficult = True  # use objects considered difficult to detect?
 
+    if not os.path.exists(args.result):
+        os.makedirs(args.result)
+
     # Model parameters
     # Not too many here since the SSD300 has a very specific structure
     n_classes = len(label_map)  # number of different types of objects
-    device = torch.device(f"cuda:{args.gpu}" if torch.cuda.is_available() else "cpu")
+    os.environ['CUDA_VISIBLE_DEVICES'] = str(args.gpu)  # 防止预训练模型被加载到gpu0上
+    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
     # Learning parameters
     workers = 4  # number of workers for loading data in the DataLoader
     print_freq = 200  # print training status every __ batches
-    lr = 1e-5  # learning rate
     decay_lr_to = 0.1  # decay learning rate to this fraction of the existing learning rate
     momentum = 0.9  # momentum
     weight_decay = 5e-4  # weight decay
@@ -123,8 +130,8 @@ if __name__ == '__main__':
                 biases.append(param)
             else:
                 not_biases.append(param)
-    optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2 * lr}, {'params': not_biases}],
-                                lr=lr, momentum=momentum, weight_decay=weight_decay)
+    optimizer = torch.optim.SGD(params=[{'params': biases, 'lr': 2 * args.lr}, {'params': not_biases}],
+                                lr=args.lr, momentum=momentum, weight_decay=weight_decay)
 
     # Move to default device
     model = model.to(device)
@@ -137,11 +144,12 @@ if __name__ == '__main__':
     train_loader = torch.utils.data.DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True,
                                                collate_fn=train_dataset.collate_fn, num_workers=workers,
                                                pin_memory=True)  # note that we're passing the collate function here
-
     # Calculate total number of epochs to train
     # To convert iterations to epochs, divide iterations by the number of iterations per epoch
-    epochs = args.iteration // (len(train_dataset) // 32)
+    epochs = args.iteration // (len(train_dataset) // args.batch_size)
     decay_lr_at = epochs // 2
+
+    train_losses = []
 
     # Epochs
     for epoch in range(epochs):
@@ -149,13 +157,19 @@ if __name__ == '__main__':
         if epoch == decay_lr_at:
             adjust_learning_rate(optimizer, decay_lr_to)
         # One epoch's training
-        train(train_loader=train_loader,
-              model=model,
-              criterion=criterion,
-              optimizer=optimizer,
-              epoch=epoch,
-              device=device,
-              print_freq=print_freq)
-
+        train_loss = train(train_loader=train_loader,
+                           model=model,
+                           criterion=criterion,
+                           optimizer=optimizer,
+                           epoch=epoch,
+                           device=device,
+                           print_freq=print_freq)
+        train_losses.append(train_loss)
         # Save checkpoint
-        save_checkpoint(epoch, model, optimizer, args.result)
+        save_checkpoint(model, os.path.join(args.result, 'model'))
+
+    plt.title('train loss')
+    plt.xlabel('epochs')
+    plt.ylabel('loss')
+    plt.plot(range(len(train_losses)), train_losses)
+    plt.savefig(os.path.join(args.result, 'train_loss.png'))
