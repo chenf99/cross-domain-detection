@@ -547,7 +547,7 @@ class MultiBoxLoss(nn.Module):
         self.alpha = alpha
 
         self.smooth_l1 = nn.L1Loss()
-        self.cross_entropy = nn.CrossEntropyLoss(reduce=False)
+        self.cross_entropy = nn.CrossEntropyLoss(reduce=False)  # reduce=False,不对结果取均值
 
     def forward(self, predicted_locs, predicted_scores, boxes, labels, device):
         """
@@ -604,7 +604,7 @@ class MultiBoxLoss(nn.Module):
             true_locs[i] = cxcy_to_gcxgcy(xy_to_cxcy(boxes[i][object_for_each_prior]), self.priors_cxcy)  # (8732, 4)
 
         # Identify priors that are positive (object/non-background)
-        positive_priors = true_classes != 0  # (N, 8732)
+        positive_priors = true_classes != 0  # (N, 8732) torch.uint8
 
         # LOCALIZATION LOSS
 
@@ -670,7 +670,7 @@ class FocalLoss(nn.Module):
         self.alpha[0] += (1 - alpha)
         self.alpha[1:] += alpha
         self.gamma = gamma
-    
+
     def forward(self, preds, targets):
         '''
         :param preds: (N, C)

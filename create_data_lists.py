@@ -31,7 +31,7 @@ if __name__ == '__main__':
     # print(voc12_path1)
     # print(voc12_path2)
     # print(output_folder)
-    
+
     create_data_lists(voc07_path1=voc07_path1,
                       voc07_path2=voc07_path2,
                       voc12_path1=voc12_path1,

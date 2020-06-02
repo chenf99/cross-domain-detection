@@ -68,7 +68,7 @@ def train(train_loader, model, criterion, optimizer, epoch, device, print_freq):
                                                                   batch_time=batch_time,
                                                                   data_time=data_time, loss=losses))
     del predicted_locs, predicted_scores, images, boxes, labels  # free some memory since their histories may be stored
-    
+
     return losses.avg
 
 
@@ -104,7 +104,7 @@ if __name__ == '__main__':
     grad_clip = None  # clip if gradients are exploding, which may happen at larger batch sizes (sometimes at 32) - you will recognize it by a sorting error in the MuliBox loss calculation
 
     cudnn.benchmark = True
-    
+
     """
     Training.
     """

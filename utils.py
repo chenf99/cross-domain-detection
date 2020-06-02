@@ -200,7 +200,7 @@ def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, tr
         true_class_images = true_images[true_labels == c]  # (n_class_objects)
         true_class_boxes = true_boxes[true_labels == c]  # (n_class_objects, 4)
         true_class_difficulties = true_difficulties[true_labels == c]  # (n_class_objects)
-        n_easy_class_objects = (1 - true_class_difficulties).sum().item()  # ignore difficult objects
+        n_easy_class_objects = (1 - true_class_difficulties).sum().item()  # ignore difficult objects 所有的正样本
 
         # Keep track of which true objects with this class have already been 'detected'
         # So far, none
@@ -230,7 +230,7 @@ def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, tr
             # Find objects in the same image with this class, their difficulties, and whether they have been detected before
             object_boxes = true_class_boxes[true_class_images == this_image]  # (n_class_objects_in_img)
             object_difficulties = true_class_difficulties[true_class_images == this_image]  # (n_class_objects_in_img)
-            # If no such object in this image, then the detection is a false positive
+            # If no such object in this image, then the detection is a false positive (该图片中没有该类别的目标)
             if object_boxes.size(0) == 0:
                 false_positives[d] = 1
                 continue
@@ -243,6 +243,7 @@ def calculate_mAP(det_boxes, det_labels, det_scores, true_boxes, true_labels, tr
             # In the original class-level tensors 'true_class_boxes', etc., 'ind' corresponds to object with index...
             original_ind = torch.LongTensor(range(true_class_boxes.size(0)))[true_class_images == this_image][ind]
             # We need 'original_ind' to update 'true_class_boxes_detected'
+            # 要注意区分 这个类别的所有objects和 这个图片中这个类别的所有objects
 
             # If the maximum overlap is greater than the threshold of 0.5, it's a match
             if max_overlap.item() > 0.5:
@@ -355,8 +356,10 @@ def find_intersection(set_1, set_2):
     """
 
     # PyTorch auto-broadcasts singleton dimensions
+    # 获取交界区域的左上角和右下角坐标
     lower_bounds = torch.max(set_1[:, :2].unsqueeze(1), set_2[:, :2].unsqueeze(0))  # (n1, n2, 2)
     upper_bounds = torch.min(set_1[:, 2:].unsqueeze(1), set_2[:, 2:].unsqueeze(0))  # (n1, n2, 2)
+    # 获取交界区域的宽和高
     intersection_dims = torch.clamp(upper_bounds - lower_bounds, min=0)  # (n1, n2, 2)
     return intersection_dims[:, :, 0] * intersection_dims[:, :, 1]  # (n1, n2)
 

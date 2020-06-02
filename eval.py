@@ -106,7 +106,7 @@ if __name__ == '__main__':
                                               collate_fn=test_dataset.collate_fn, num_workers=workers, pin_memory=True)
 
     APs, mAP = evaluate(test_loader, model, device)
-    
+
     # Print AP for each class
     pp.pprint(APs)
     print('\nMean Average Precision (mAP): %.3f' % mAP)

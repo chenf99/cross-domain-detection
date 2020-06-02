@@ -22,7 +22,7 @@ def path_to_id(img):
 
 
 def main():
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument('--root', required=True)
     parser.add_argument('--data_folder', required=True)
@@ -84,7 +84,7 @@ def main():
     with open(os.path.join(args.data_folder, 'TRAIN_images.json'), 'r') as j:
         images = json.load(j)
         ids = [path_to_id(img) for img in images]
-    
+
     new_ids = []
 
     for i, (pred_b, pred_l, pred_s, gt_l) in enumerate(
@@ -120,7 +120,7 @@ def main():
             # pred_b = np.concatenate((pred_b[:ind], pred_b[ind + 1:]), 0)
             # pred_l = np.concatenate((pred_l[:ind], pred_l[ind + 1:]), 0)
             # pred_s = np.concatenate((pred_s[:ind], pred_s[ind + 1:]), 0)
-            
+
         if cnt == 0:
             continue  # 没有ground turth label,直接跳过写入Annotation步骤
 

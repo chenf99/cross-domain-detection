@@ -4,7 +4,6 @@
 *.ipynb*
 *.zip
 /dataset
-README.md
 test*
 result/
 output/
